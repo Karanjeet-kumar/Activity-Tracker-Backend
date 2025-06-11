@@ -325,15 +325,51 @@ class TrnActivityListView(APIView):
 
 from .serializers import AssignedActivitySerializer
 
+# class AssignedActivityListView(APIView):
+#     def get(self, request, user_id):
+#         activities = TrnActivity.objects.filter(assign_to=user_id, status=1).order_by('-CreatedOn')
+#         serializer = AssignedActivitySerializer(activities, many=True)
+#         return Response({
+#             "success": "true",
+#             "message": "Assigned activities fetched successfully.",
+#             "assignedActivities": serializer.data
+#         })
+
 class AssignedActivityListView(APIView):
     def get(self, request, user_id):
-        tasks = TrnActivity.objects.filter(assign_to=user_id, status=1).order_by('-CreatedOn')
-        serializer = AssignedActivitySerializer(tasks, many=True)
+        try:
+            user = MstUser.objects.get(user_id=user_id)
+        except MstUser.DoesNotExist:
+            return Response({
+                "success": "false",
+                "message": "User not found.",
+                "assignedActivities": []
+            })
+
+        # Check if user is a HOD
+        hod_department = MstDepartment.objects.filter(HOD=user).first()
+
+        if hod_department:
+            # User is HOD
+            activities = TrnActivity.objects.filter(
+                department=hod_department,
+                AssignedUserRole__iexact='HOD',
+                status_id=1
+            ).order_by('-CreatedOn')
+        else:
+            # User is Employee
+            activities = TrnActivity.objects.filter(
+                assign_to=user,
+                status_id=1
+            ).order_by('-CreatedOn')
+
+        serializer = AssignedActivitySerializer(activities, many=True)
         return Response({
             "success": "true",
             "message": "Assigned activities fetched successfully.",
             "assignedActivities": serializer.data
         })
+
 
 
 

@@ -244,5 +244,32 @@ class TrnActivityTask(models.Model):
         db_table = 'Trn_Activity_Task'
 
 
+class TrnTaskUpdate(models.Model):
+    UpdateId = models.AutoField(primary_key=True) 
+
+    task_id = models.ForeignKey(
+        TrnActivityTask,
+        on_delete=models.CASCADE,
+        db_column='TaskId'
+    )
+
+    action_by = models.ForeignKey(
+        MstUser, 
+        on_delete=models.CASCADE,
+        db_column='ActionBy', 
+    )
+
+    ActionOn = models.DateTimeField()
+
+    action_status = models.ForeignKey(
+        MstStatus,
+        on_delete=models.CASCADE,
+        db_column='ActionStatus'
+    )
+
+    Remarks = models.TextField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'Trn_Task_Update'
 
 

@@ -61,6 +61,9 @@ def homepage(request):
                 <li class="list-group-item">
                     <a href="{reverse('tasks-list', kwargs={'user_id': 6})}">Get AssignedTasks API (User 6)</a>
                 </li>
+                <li class="list-group-item">
+                    <a href="{reverse('add-task-update')}">Add TaskUpdate API</a>
+                </li>
             </ul>
         </div>
     </body>
@@ -375,6 +378,8 @@ class AssignedActivityListView(APIView):
 
 
 from django.utils import timezone
+from django.utils.timezone import now
+import pytz
 from .models import TrnActivity, MstUser
 from .serializers import TrnActivityAcceptanceUpdateSerializer
 
@@ -394,7 +399,7 @@ class UpdateActivityAcceptanceView(APIView):
             "Acceptance": acceptance,  # 🔁 MODIFIED: use variable instead of inline call
             "modified_by": request.data.get("ActionBy"),  # 🔁 MODIFIED: renamed from request.data.get("modified_by")
             "status": status_id,  # 🔁 MODIFIED: dynamic status based on acceptance
-            "ModifiedOn": timezone.now(),
+            "ModifiedOn": now().astimezone(pytz.timezone("Asia/Kolkata")),
             "Comments": request.data.get("Comments")  # Optional
         }
 
@@ -432,7 +437,7 @@ from .serializers import AssignedTaskSerializer
 
 class AssignedTaskListView(APIView):
     def get(self, request, user_id):
-        tasks = TrnActivityTask.objects.filter(assigned_to__user_id=user_id)
+        tasks = TrnActivityTask.objects.filter(assigned_to__user_id=user_id).order_by('-AssignedOn')
         serializer = AssignedTaskSerializer(tasks, many=True)
         return Response({
             "success": "true",
@@ -441,6 +446,44 @@ class AssignedTaskListView(APIView):
         })
 
 
+
+from .serializers import TrnTaskUpdateSerializer
+
+# class TrnTaskUpdateCreateView(APIView):
+#     def post(self, request):
+#         serializer = TrnTaskUpdateSerializer(data=request.data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response({
+#                 "success": True,
+#                 "message": "Task Updated successfully.",
+#                 "taskUpdates": serializer.data
+#             }, status=status.HTTP_201_CREATED)
+#         return Response({
+#             "success": False,
+#             "errors": serializer.errors
+#         }, status=status.HTTP_400_BAD_REQUEST)
+
+class TrnTaskUpdateCreateView(APIView):
+    def post(self, request):
+        serializer = TrnTaskUpdateSerializer(data=request.data)
+        if serializer.is_valid():
+            task_update = serializer.save()
+
+            # Update the corresponding TrnActivityTask action_status
+            task = task_update.task_id  # FK instance
+            task.status = task_update.action_status
+            task.save()
+
+            return Response(
+                {   
+                    "success": True,
+                    "message": "Task Updated successfully.",
+                    "data": serializer.data
+                },
+                status=status.HTTP_201_CREATED
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 

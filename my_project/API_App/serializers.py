@@ -290,3 +290,13 @@ class AssignedTaskSerializer(serializers.ModelSerializer):
             'Verifier',
             'CreatedBy',
         ]
+
+
+# Serializer for add trn_task_update  
+from .models import TrnTaskUpdate
+
+class TrnTaskUpdateSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = TrnTaskUpdate
+        fields = '__all__'

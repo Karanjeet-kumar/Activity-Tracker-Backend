@@ -117,12 +117,13 @@ class LoginUserSerializer(serializers.ModelSerializer):
     isVerifier = serializers.SerializerMethodField()
     locationId = serializers.IntegerField(source='location.location_id')
     departmentId = serializers.IntegerField(source='department.department_id', default=0)
+    deptName = serializers.CharField(source='department.department_name')
 
     class Meta:
         model = MstUser
         fields = [
             'user_id', 'user_name', 'user_code', 'email_id', 'locationId', 'departmentId',
-            'isAdmin', 'isHOD', 'isVerifier'
+            'deptName', 'isAdmin', 'isHOD', 'isVerifier'
         ]
 
     def get_isAdmin(self, obj):
@@ -272,16 +273,16 @@ class TrnActivityTaskSerializer(serializers.ModelSerializer):
 
 # Serializer for Assigned Task List Responce 
 class AssignedTaskSerializer(serializers.ModelSerializer):
-    Category = serializers.CharField(source='activity.category.category_name', read_only=True)
+    ActivityId = serializers.CharField(source='activity.ActivityId', read_only=True)
     Verifier = serializers.CharField(source='activity.verifier.user_name', read_only=True)
-    CreatedBy = serializers.CharField(source='activity.created_by.user_name', read_only=True)
-    Status = serializers.CharField(source='status.status_name', read_only=True)  # if you want readable status name
+    Status = serializers.CharField(source='status.status_name', read_only=True)
+    CreatedBy = serializers.SerializerMethodField()
 
     class Meta:
         model = TrnActivityTask
         fields = [
             'TaskId',
-            'Category',
+            'ActivityId',
             'TaskDescription',
             'AssignedOn',
             'Remarks',
@@ -290,6 +291,13 @@ class AssignedTaskSerializer(serializers.ModelSerializer):
             'Verifier',
             'CreatedBy',
         ]
+
+    def get_CreatedBy(self, obj):
+        if not obj.IsPrimary:
+            return obj.reference_task.assigned_to.user_name if obj.reference_task and obj.reference_task.assigned_to else None
+        else:
+            return obj.activity.created_by.user_name if obj.activity and obj.activity.created_by else None
+
 
 
 # Serializer for add trn_task_update  

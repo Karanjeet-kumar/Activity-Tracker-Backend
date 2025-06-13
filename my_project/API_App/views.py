@@ -1,6 +1,6 @@
 from tokenize import TokenError
 from .models import MstCompany, MstDepartment
-from .serializers import MstCompanySerializer
+from .serializers import MstCompanySerializer, VerifyActivitySerializer
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.decorators import permission_classes
@@ -63,6 +63,9 @@ def homepage(request):
                 </li>
                 <li class="list-group-item">
                     <a href="{reverse('add-task-update')}">Add TaskUpdate API</a>
+                </li>
+                <li class="list-group-item">
+                    <a href="{reverse('get-verify-activities', kwargs={'user_id': 45})}">Get VerifyTasks API (User 45)</a>
                 </li>
             </ul>
         </div>
@@ -393,7 +396,7 @@ class UpdateActivityAcceptanceView(APIView):
         acceptance = request.data.get("Acceptance")  # 🔁 MODIFIED (extracted for logic below)
 
         # 🔁 MODIFIED: conditional logic for status
-        status_id = 2 if acceptance == "Yes" else 7
+        status_id = 3 if acceptance == "Yes" else 7
 
         data = {
             "Acceptance": acceptance,  # 🔁 MODIFIED: use variable instead of inline call
@@ -485,6 +488,27 @@ class TrnTaskUpdateCreateView(APIView):
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+
+class VerifyActivityListView(APIView):
+    def get(self, request, user_id):
+
+        activities = TrnActivityTask.objects.select_related('activity').filter(
+            IsPrimary=True,
+            activity__status=3,
+            activity__verifier__user_id=user_id,
+            status_id=5
+        )
+
+        serializer = VerifyActivitySerializer(activities, many=True)
+        return Response(
+                {   
+                    "success": True,
+                    "message": "Verifier Activities Fetched successfully.",
+                    "activities": serializer.data
+                },
+                status=status.HTTP_201_CREATED
+            )
 
 
 # Without using serializer-----------------------

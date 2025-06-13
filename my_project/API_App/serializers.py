@@ -239,6 +239,7 @@ class AssignedActivitySerializer(serializers.ModelSerializer):
             'Category',
             'Verifier',
             'CreatedBy',
+            'CreatedOn',
             'TargetDate',
             'AdditionalNote',
         ]
@@ -308,3 +309,34 @@ class TrnTaskUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = TrnTaskUpdate
         fields = '__all__'
+
+
+
+
+class VerifyActivitySerializer(serializers.ModelSerializer):
+    CategoryName = serializers.CharField(source='activity.category.category_name', read_only=True)
+    ActivityId = serializers.CharField(source='activity.ActivityId', read_only=True)
+    ActivityName = serializers.CharField(source='activity.ActivityName', read_only=True)
+    Description = serializers.CharField(source='activity.AdditionalNote', read_only=True)
+    CreatedOn = serializers.CharField(source='activity.CreatedOn', read_only=True)
+    Status = serializers.CharField(source='activity.status.status_name', read_only=True)
+    AssignedBy = serializers.CharField(source='activity.created_by.user_name', read_only=True)
+    AssignedTo = serializers.CharField(source='assigned_to.user_name', read_only=True)
+    AssignedUserRole = serializers.CharField(source='activity.AssignedUserRole', read_only=True)
+    AssignedUserDept = serializers.CharField(source='activity.department.department_name', read_only=True)
+
+    class Meta:
+        model = TrnActivityTask
+        fields = [
+            'ActivityId',
+            'CategoryName',
+            'ActivityName',
+            'Description',
+            'CreatedOn',
+            'TargetDate',
+            'Status',
+            'AssignedBy',
+            'AssignedTo',
+            'AssignedUserRole',
+            'AssignedUserDept',
+        ]

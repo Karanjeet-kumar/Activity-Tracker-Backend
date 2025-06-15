@@ -65,7 +65,7 @@ def homepage(request):
                     <a href="{reverse('add-task-update')}">Add TaskUpdate API</a>
                 </li>
                 <li class="list-group-item">
-                    <a href="{reverse('get-verify-activities', kwargs={'user_id': 45})}">Get VerifyTasks API (User 45)</a>
+                    <a href="{reverse('get-verify-activities', kwargs={'user_id': 6})}">Get VerifierActivities API (User 6)</a>
                 </li>
             </ul>
         </div>
@@ -380,9 +380,6 @@ class AssignedActivityListView(APIView):
 
 
 
-from django.utils import timezone
-from django.utils.timezone import now
-import pytz
 from .models import TrnActivity, MstUser
 from .serializers import TrnActivityAcceptanceUpdateSerializer
 
@@ -402,7 +399,7 @@ class UpdateActivityAcceptanceView(APIView):
             "Acceptance": acceptance,  # 🔁 MODIFIED: use variable instead of inline call
             "modified_by": request.data.get("ActionBy"),  # 🔁 MODIFIED: renamed from request.data.get("modified_by")
             "status": status_id,  # 🔁 MODIFIED: dynamic status based on acceptance
-            "ModifiedOn": now().astimezone(pytz.timezone("Asia/Kolkata")),
+            "ModifiedOn": request.data.get("ActionOn"),
             "Comments": request.data.get("Comments")  # Optional
         }
 
@@ -490,25 +487,35 @@ class TrnTaskUpdateCreateView(APIView):
 
 
 
+from django.db.models import OuterRef, Subquery, DateTimeField
+from .models import TrnTaskUpdate
+
 class VerifyActivityListView(APIView):
     def get(self, request, user_id):
+        # Subquery to get latest ActionOn per task
+        latest_actionon_subquery = TrnTaskUpdate.objects.filter(
+            task_id=OuterRef('pk')
+        ).order_by('-ActionOn').values('ActionOn')[:1]
 
-        activities = TrnActivityTask.objects.select_related('activity').filter(
+        # Annotate each task with latest ActionOn and order by it
+        activities = TrnActivityTask.objects.select_related('activity').annotate(
+            last_actionon=Subquery(latest_actionon_subquery, output_field=DateTimeField())
+        ).filter(
             IsPrimary=True,
             activity__status=3,
             activity__verifier__user_id=user_id,
             status_id=5
-        )
+        ).order_by('-last_actionon')  # ⬅️ Order by latest action
 
         serializer = VerifyActivitySerializer(activities, many=True)
         return Response(
-                {   
-                    "success": True,
-                    "message": "Verifier Activities Fetched successfully.",
-                    "activities": serializer.data
-                },
-                status=status.HTTP_201_CREATED
-            )
+            {
+                "success": True,
+                "message": "Verifier Activities Fetched successfully.",
+                "activities": serializer.data
+            },
+            status=status.HTTP_200_OK
+        )
 
 
 # Without using serializer-----------------------

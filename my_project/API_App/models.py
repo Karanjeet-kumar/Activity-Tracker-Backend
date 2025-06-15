@@ -213,7 +213,7 @@ class TrnActivityTask(models.Model):
         on_delete=models.CASCADE,
         db_column='AssignedTo'
     )
-    AssignedOn = models.DateField()
+    AssignedOn = models.DateTimeField()
     TargetDate = models.DateField()
 
     status = models.ForeignKey(

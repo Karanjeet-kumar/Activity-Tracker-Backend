@@ -313,17 +313,23 @@ class TrnTaskUpdateSerializer(serializers.ModelSerializer):
 
 
 
+from rest_framework import serializers
+from .models import TrnActivityTask, TrnTaskUpdate
+
 class VerifyActivitySerializer(serializers.ModelSerializer):
     CategoryName = serializers.CharField(source='activity.category.category_name', read_only=True)
     ActivityId = serializers.CharField(source='activity.ActivityId', read_only=True)
     ActivityName = serializers.CharField(source='activity.ActivityName', read_only=True)
     Description = serializers.CharField(source='activity.AdditionalNote', read_only=True)
-    CreatedOn = serializers.CharField(source='activity.CreatedOn', read_only=True)
+    CreatedOn = serializers.DateTimeField(source='activity.CreatedOn', read_only=True)
     Status = serializers.CharField(source='activity.status.status_name', read_only=True)
     AssignedBy = serializers.CharField(source='activity.created_by.user_name', read_only=True)
     AssignedTo = serializers.CharField(source='assigned_to.user_name', read_only=True)
     AssignedUserRole = serializers.CharField(source='activity.AssignedUserRole', read_only=True)
     AssignedUserDept = serializers.CharField(source='activity.department.department_name', read_only=True)
+
+    # 🔽 Custom method field to include latest ActionOn
+    LastActionOn = serializers.SerializerMethodField()
 
     class Meta:
         model = TrnActivityTask
@@ -339,4 +345,13 @@ class VerifyActivitySerializer(serializers.ModelSerializer):
             'AssignedTo',
             'AssignedUserRole',
             'AssignedUserDept',
+            'LastActionOn', 
         ]
+
+    def get_LastActionOn(self, obj):
+        # Get latest task update for this task
+        latest_update = TrnTaskUpdate.objects.filter(task_id=obj).order_by('-ActionOn').first()
+        if latest_update:
+            return latest_update.ActionOn
+        return None
+

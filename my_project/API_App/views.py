@@ -47,7 +47,7 @@ def homepage(request):
                     <a href="{reverse('add-trnActivity')}">Add TrnActivity API</a>
                 </li>
                 <li class="list-group-item">
-                    <a href="{reverse('trnActivities-list')}">Get TrnActivities API</a>
+                    <a href="{reverse('trnActivities-list', kwargs={'admin_id': 43})}">Get TrnActivities API (Admin 45)</a>
                 </li>
                 <li class="list-group-item">
                     <a href="{reverse('assignedActivities-list', kwargs={'user_id': 45})}">Get AssignedActivities API (User 45)</a>
@@ -318,15 +318,45 @@ class TrnActivityCreateView(APIView):
 from .models import TrnActivity
 from .serializers import TrnActivityListSerializer
 
+# class TrnActivityListView(APIView):
+#     def get(self, request, admin_id):
+#         activities = TrnActivity.objects.filter(created_by=admin_id, status=3).order_by('-CreatedOn')
+#         serializer = TrnActivityListSerializer(activities, many=True)
+#         return Response({
+#             "success": "true",
+#             "message": "TrnActivities fetched successfully.",
+#             "trnActivities": serializer.data
+#         })
+
+
+
 class TrnActivityListView(APIView):
-    def get(self, request):
-        activities = TrnActivity.objects.all().order_by('-CreatedOn')
+    def get(self, request, admin_id):
+        # Get optional query parameters
+        activity_name = request.query_params.get('activity_name', None)
+        status = request.query_params.get('status', None)
+
+        # Base queryset
+        activities = TrnActivity.objects.filter(created_by=admin_id)
+
+        # Apply filters
+        if activity_name:
+            activities = activities.filter(ActivityName__icontains=activity_name)
+
+        if status:
+            activities = activities.filter(status=status)
+
+        # Order by created date
+        activities = activities.order_by('-CreatedOn')
+
+        # Serialize and return response
         serializer = TrnActivityListSerializer(activities, many=True)
         return Response({
-            "success": "true",
+            "success": True,
             "message": "TrnActivities fetched successfully.",
             "trnActivities": serializer.data
         })
+
     
 
 from .serializers import AssignedActivitySerializer
@@ -355,6 +385,10 @@ class AssignedActivityListView(APIView):
         # Check if user is a HOD
         hod_department = MstDepartment.objects.filter(HOD=user).first()
 
+        # Get optional query parameters
+        activity_name = request.query_params.get('activity_name', None)
+        status = request.query_params.get('status', None)
+
         if hod_department:
             # User is HOD
             activities = TrnActivity.objects.filter(
@@ -368,6 +402,12 @@ class AssignedActivityListView(APIView):
                 assign_to=user,
                 status_id=1
             ).order_by('-CreatedOn')
+
+        if activity_name:
+            activities = activities.filter(ActivityName__icontains=activity_name)
+
+        if status:
+            activities = activities.filter(status=status)
 
         serializer = AssignedActivitySerializer(activities, many=True)
         return Response({

@@ -475,9 +475,35 @@ class TrnActivityTaskCreateView(APIView):
 from .models import TrnActivityTask
 from .serializers import AssignedTaskSerializer
 
+# class AssignedTaskListView(APIView):
+#     def get(self, request, user_id):
+#         tasks = TrnActivityTask.objects.filter(assigned_to__user_id=user_id).order_by('-AssignedOn')
+#         serializer = AssignedTaskSerializer(tasks, many=True)
+#         return Response({
+#             "success": "true",
+#             "message": "Tasks fetched successfully.",
+#             "assignedTasks": serializer.data
+#         })
+
+
 class AssignedTaskListView(APIView):
     def get(self, request, user_id):
-        tasks = TrnActivityTask.objects.filter(assigned_to__user_id=user_id).order_by('-AssignedOn')
+        # Get optional query parameters
+        task_name = request.query_params.get('task_name', None)
+        status = request.query_params.get('status', None)
+
+        # Base queryset
+        tasks = TrnActivityTask.objects.filter(assigned_to__user_id=user_id)
+
+        # Apply filters
+        if task_name:
+            tasks = tasks.filter(TaskDescription__icontains=task_name)
+
+        if status:
+            tasks = tasks.filter(status=status)
+
+        # Order by created date
+        tasks = tasks.order_by('-AssignedOn')
         serializer = AssignedTaskSerializer(tasks, many=True)
         return Response({
             "success": "true",

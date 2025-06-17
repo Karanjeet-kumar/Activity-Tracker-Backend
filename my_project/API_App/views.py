@@ -70,6 +70,9 @@ def homepage(request):
                 <li class="list-group-item">
                     <a href="{reverse('add-activity-update')}">Add ActivityUpdate API</a>
                 </li>
+                <li class="list-group-item">
+                    <a href="{reverse('close-activity', kwargs={'activity_id': 8})}">Close TrnActivity API (ActivityId 8)</a>
+                </li>
             </ul>
         </div>
     </body>
@@ -597,6 +600,17 @@ class TrnActivityUpdateCreateView(APIView):
             return Response({"success": True, "message": "Activity Update Created", "data": serializer.data}, status=status.HTTP_201_CREATED)
         return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
+
+from .serializers import TrnActivityCloseSerializer
+
+class TrnActivityCloseAPIView(APIView):
+    def put(self, request, activity_id):
+        activity = TrnActivity.objects.get(ActivityId=activity_id)
+        serializer = TrnActivityCloseSerializer(activity, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"success": True, "message": "Activity Close Updated", "data": serializer.data}, status=status.HTTP_200_OK)
+        return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # Without using serializer-----------------------

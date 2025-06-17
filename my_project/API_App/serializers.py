@@ -399,6 +399,14 @@ class TrnActivityUpdateCreateSerializer(serializers.ModelSerializer):
             # Do not change activity.status
 
         return activity_update
+    
+
+
+# Serializer for close trn_activity  
+class TrnActivityCloseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TrnActivity
+        fields = ['status', 'ClosedOn']
 
 
 # class TrnActivityUpdateCreateSerializer(serializers.ModelSerializer):

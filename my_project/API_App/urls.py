@@ -1,7 +1,7 @@
 from rest_framework_simplejwt.views import TokenRefreshView
 from django.urls import path
 from API_App import views
-from .views import AssignedActivityListView, AssignedTaskListView, LogoutAPIView, TrnActivityCreateView, TrnActivityListView, TrnActivityTaskCreateView, TrnActivityUpdateCreateView, TrnTaskUpdateCreateView, UpdateActivityAcceptanceView, UserListAPIView, VerifierUserListAPIView, VerifyActivityListView
+from .views import AssignedActivityListView, AssignedTaskListView, LogoutAPIView, TrnActivityCloseAPIView, TrnActivityCreateView, TrnActivityListView, TrnActivityTaskCreateView, TrnActivityUpdateCreateView, TrnTaskUpdateCreateView, UpdateActivityAcceptanceView, UserListAPIView, VerifierUserListAPIView, VerifyActivityListView
 
 urlpatterns = [
     # path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
@@ -23,5 +23,6 @@ urlpatterns = [
     path('add/task-updates/', TrnTaskUpdateCreateView.as_view(), name='add-task-update'),
     path('get/verifiers/activities/<int:user_id>/', VerifyActivityListView.as_view(), name='get-verify-activities'),
     path('add/activity-updates/', TrnActivityUpdateCreateView.as_view(), name='add-activity-update'),
+    path('trnActivities/close/<int:activity_id>/', TrnActivityCloseAPIView.as_view(), name='close-activity'),
 ]
 

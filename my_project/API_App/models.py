@@ -180,6 +180,7 @@ class TrnActivity(models.Model):
     TargetDate = models.DateField()
     department = models.ForeignKey(MstDepartment, on_delete=models.CASCADE, db_column='DepartmentId')
     CreatedOn = models.DateTimeField()
+    ClosedOn = models.DateTimeField(null=True, blank=True)
     
     created_by = models.ForeignKey(
         MstUser, 

@@ -323,6 +323,7 @@ class VerifyActivitySerializer(serializers.ModelSerializer):
     Description = serializers.CharField(source='activity.AdditionalNote', read_only=True)
     CreatedOn = serializers.DateTimeField(source='activity.CreatedOn', read_only=True)
     Status = serializers.CharField(source='activity.status.status_name', read_only=True)
+    task_status = serializers.CharField(source='status.status_name', read_only=True)
     AssignedBy = serializers.CharField(source='activity.created_by.user_name', read_only=True)
     AssignedTo = serializers.CharField(source='assigned_to.user_name', read_only=True)
     AssignedUserRole = serializers.CharField(source='activity.AssignedUserRole', read_only=True)
@@ -341,6 +342,7 @@ class VerifyActivitySerializer(serializers.ModelSerializer):
             'CreatedOn',
             'TargetDate',
             'Status',
+            'task_status',
             'AssignedBy',
             'AssignedTo',
             'AssignedUserRole',
@@ -354,4 +356,74 @@ class VerifyActivitySerializer(serializers.ModelSerializer):
         if latest_update:
             return latest_update.ActionOn
         return None
+
+
+
+# Serializer for add trn_activity_update
+from .models import TrnActivityUpdate
+
+class TrnActivityUpdateCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TrnActivityUpdate
+        fields = ['activity_id', 'ActionOn', 'action_by', 'action_status', 'Comments']
+
+    def validate(self, data):
+        status = data.get("action_status")
+        comments = data.get("Comments")
+
+        if status.status_name.lower() == 'returned' and not comments:
+            raise serializers.ValidationError("Comments are required when status is Reject.")
+        if status.status_name.lower() == 'verified' and comments:
+            raise serializers.ValidationError("Comments should be empty when status is Verify.")
+        return data
+
+    def create(self, validated_data):
+        # Save activity update record
+        activity_update = super().create(validated_data)
+
+        activity = validated_data['activity_id']
+        action_status = validated_data['action_status']
+
+        if action_status.status_name.lower() == 'verified':
+            # Set primary task status to the same as action_status
+            TrnActivityTask.objects.filter(activity=activity, IsPrimary=True).update(status=action_status)
+
+            # Also update activity status to ID 5 (verified)
+            activity.status_id = 5
+            activity.save(update_fields=['status_id'])
+
+        elif action_status.status_name.lower() == 'returned':
+            # Set primary task status to status_id 10 (rejected)
+            TrnActivityTask.objects.filter(activity=activity, IsPrimary=True).update(status_id=10)
+
+            # Do not change activity.status
+
+        return activity_update
+
+
+# class TrnActivityUpdateCreateSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = TrnActivityUpdate
+#         fields = ['activity_id', 'ActionOn', 'action_by', 'action_status', 'Comments']
+
+#     def validate(self, data):
+#         status = data.get("action_status")
+#         comments = data.get("Comments")
+
+#         if status.status_name.lower() == 'reject' and not comments:
+#             raise serializers.ValidationError("Comments are required when status is Reject.")
+#         if status.status_name.lower() == 'verify' and comments:
+#             raise serializers.ValidationError("Comments should be empty when status is Verify.")
+#         return data
+
+#     def create(self, validated_data):
+#         # Create the TrnActivityUpdate record
+#         activity_update = super().create(validated_data)
+
+#         # Update the status of the related TrnActivity
+#         activity = validated_data['activity_id']
+#         activity.status = validated_data['action_status']
+#         activity.save(update_fields=['status'])
+
+#         return activity_update
 

@@ -67,6 +67,9 @@ def homepage(request):
                 <li class="list-group-item">
                     <a href="{reverse('get-verify-activities', kwargs={'user_id': 6})}">Get VerifierActivities API (User 6)</a>
                 </li>
+                <li class="list-group-item">
+                    <a href="{reverse('add-activity-update')}">Add ActivityUpdate API</a>
+                </li>
             </ul>
         </div>
     </body>
@@ -568,9 +571,9 @@ class VerifyActivityListView(APIView):
             last_actionon=Subquery(latest_actionon_subquery, output_field=DateTimeField())
         ).filter(
             IsPrimary=True,
-            activity__status=3,
+            activity__status__in=[3, 5],
             activity__verifier__user_id=user_id,
-            status_id=5
+            status__in=[5, 8]
         ).order_by('-last_actionon')  # ⬅️ Order by latest action
 
         serializer = VerifyActivitySerializer(activities, many=True)
@@ -582,6 +585,18 @@ class VerifyActivityListView(APIView):
             },
             status=status.HTTP_200_OK
         )
+    
+
+from .serializers import TrnActivityUpdateCreateSerializer
+
+class TrnActivityUpdateCreateView(APIView):
+    def post(self, request):
+        serializer = TrnActivityUpdateCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"success": True, "message": "Activity Update Created", "data": serializer.data}, status=status.HTTP_201_CREATED)
+        return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 # Without using serializer-----------------------

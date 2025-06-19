@@ -312,10 +312,7 @@ class TrnTaskUpdateSerializer(serializers.ModelSerializer):
 
 
 
-
-from rest_framework import serializers
-from .models import TrnActivityTask, TrnTaskUpdate
-
+# Serializer for Verifier Activity List Responce 
 class VerifyActivitySerializer(serializers.ModelSerializer):
     CategoryName = serializers.CharField(source='activity.category.category_name', read_only=True)
     ActivityId = serializers.CharField(source='activity.ActivityId', read_only=True)
@@ -407,6 +404,75 @@ class TrnActivityCloseSerializer(serializers.ModelSerializer):
     class Meta:
         model = TrnActivity
         fields = ['status', 'ClosedOn']
+
+
+
+# Serializer for Admin Activity Data List Responce 
+class ActivityDataSerializer(serializers.ModelSerializer):
+    activityId = serializers.IntegerField(source='ActivityId')
+    activityName = serializers.CharField(source='ActivityName')
+    tasks = serializers.SerializerMethodField()
+    activityUpdates = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TrnActivity
+        fields = ['activityId', 'activityName', 'activityUpdates', 'tasks']
+
+    def get_activityUpdates(self, obj):
+        """Fetch only updates done by the verifier from TrnActivityUpdate"""
+        updates = TrnActivityUpdate.objects.filter(activity_id=obj, action_by=obj.verifier)
+        return [
+            {
+                "actionStatus": update.action_status.status_name,
+                "comments": update.Comments,
+                "actionBy": update.action_by.user_name,
+                "actionOn": update.ActionOn.strftime("%Y-%m-%d")
+            }
+            for update in updates
+        ]
+
+    def get_tasks(self, obj):
+        """Return only parent tasks and their child tasks separately"""
+        parent_tasks = TrnActivityTask.objects.filter(activity=obj, reference_task__isnull=True)
+        task_list = []
+
+        for task in parent_tasks:
+            child_tasks = TrnActivityTask.objects.filter(reference_task=task)
+
+            task_list.append({
+                "taskId": task.TaskId,
+                "status": task.status.status_name,
+                "description": task.TaskDescription,
+                "assignedOn": task.AssignedOn.strftime("%Y-%m-%d"),
+                "assignedTo": task.assigned_to.user_name,
+                "updates": self.get_task_updates(task),
+                "child_tasks": [
+                    {
+                        "taskId": child.TaskId,
+                        "status": child.status.status_name,
+                        "description": child.TaskDescription,
+                        "assignedOn": child.AssignedOn.strftime("%Y-%m-%d"),
+                        "assignedTo": child.assigned_to.user_name,
+                        "updates": self.get_task_updates(child)
+                    }
+                    for child in child_tasks
+                ]
+            })
+
+        return task_list
+
+    def get_task_updates(self, task):
+        updates = TrnTaskUpdate.objects.filter(task_id=task)
+        return [
+            {
+                "actionStatus": update.action_status.status_name,
+                "remarks": update.Remarks,
+                "actionBy": update.action_by.user_name,
+                "actionOn": update.ActionOn.strftime("%Y-%m-%d")
+            }
+            for update in updates
+        ]
+
 
 
 # class TrnActivityUpdateCreateSerializer(serializers.ModelSerializer):

@@ -73,6 +73,9 @@ def homepage(request):
                 <li class="list-group-item">
                     <a href="{reverse('close-activity', kwargs={'activity_id': 8})}">Close TrnActivity API (ActivityId 8)</a>
                 </li>
+                <li class="list-group-item">
+                    <a href="{reverse('activity-detail', kwargs={'activity_id': 43})}">Get ActivityInfo API (Demo test activity)</a>
+                </li>
             </ul>
         </div>
     </body>
@@ -107,7 +110,7 @@ def login(request):
         return Response({'success': False, 'message': 'Something is missing'}, status=400)
 
     try:
-        user = MstUser.objects.select_related('location', 'department').get(user_name=username, is_active=True)
+        user = MstUser.objects.select_related('location', 'department').get(user_alias=username, is_active=True)
     except MstUser.DoesNotExist:
         return Response({'success': False, 'message': 'User not found'}, status=404)
 
@@ -133,6 +136,73 @@ def login(request):
     
     return response
 
+
+
+
+# import requests
+# from rest_framework.decorators import api_view
+# from rest_framework.response import Response
+# from rest_framework_simplejwt.tokens import RefreshToken
+# from .models import MstUser
+# from .serializers import LoginUserSerializer
+# import logging
+
+# logger = logging.getLogger(__name__)
+
+# @api_view(['POST'])
+# def login(request):
+#     username = request.data.get('username')
+#     password = request.data.get('password')
+
+#     if not username or not password:
+#         return Response({'success': False, 'message': 'Username or password missing'}, status=400)
+
+#     ad_api_url = "http://172.24.240.11:100/LDAP/api/AuthAPI/IsAccountAuthorized"
+#     try:
+#         ad_response = requests.post(ad_api_url, json={
+#             "username": username,
+#             "password": password
+#         })
+
+#         logger.info(f"AD API Response Status: {ad_response.status_code}")
+#         logger.info(f"AD API Response Body: {ad_response.text}")
+
+#         ad_data = ad_response.json()
+
+#         if ad_response.status_code != 200 or not ad_data.get("result", False):
+#             return Response({'success': False, 'message': 'Invalid AD credentials'}, status=401)
+
+#     except requests.exceptions.RequestException as e:
+#         logger.exception("AD request failed")
+#         return Response({'success': False, 'message': f'AD authentication failed: {str(e)}'}, status=500)
+
+#     except ValueError as e:
+#         logger.exception("Error parsing AD response JSON")
+#         return Response({'success': False, 'message': 'Invalid AD response format'}, status=500)
+
+#     try:
+#         user = MstUser.objects.select_related('location', 'department').get(user_alias=username, is_active=True)
+#     except MstUser.DoesNotExist:
+#         return Response({'success': False, 'message': 'User not found in local database'}, status=404)
+#     except Exception as e:
+#         logger.exception("Unexpected DB error")
+#         return Response({'success': False, 'message': f'Database error: {str(e)}'}, status=500)
+
+#     try:
+#         refresh = RefreshToken.for_user(user)
+#         access_token = str(refresh.access_token)
+#         serializer = LoginUserSerializer(user)
+#     except Exception as e:
+#         logger.exception("Error during token generation or serialization")
+#         return Response({'success': False, 'message': f'JWT error: {str(e)}'}, status=500)
+
+#     return Response({
+#         'success': True,
+#         'message': f'Welcome {username}',
+#         'user': serializer.data,
+#         'access_token': access_token,
+#         'refresh_token': str(refresh)
+#     })
 
 
 
@@ -611,6 +681,22 @@ class TrnActivityCloseAPIView(APIView):
             serializer.save()
             return Response({"success": True, "message": "Activity Close Updated", "data": serializer.data}, status=status.HTTP_200_OK)
         return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+from .serializers import ActivityDataSerializer
+
+class ActivityDetailView(APIView):
+    def get(self, request, activity_id):
+        try:
+            activity = TrnActivity.objects.get(ActivityId=activity_id)
+        except TrnActivity.DoesNotExist:
+            return Response({"error": "Activity not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = ActivityDataSerializer(activity)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
 
 
 # Without using serializer-----------------------

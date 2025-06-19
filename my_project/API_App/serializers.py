@@ -314,7 +314,7 @@ class TrnTaskUpdateSerializer(serializers.ModelSerializer):
 
 # Serializer for Verifier Activity List Responce 
 class VerifyActivitySerializer(serializers.ModelSerializer):
-    CategoryName = serializers.CharField(source='activity.category.category_name', read_only=True)
+    Category = serializers.CharField(source='activity.category.category_name', read_only=True)
     ActivityId = serializers.CharField(source='activity.ActivityId', read_only=True)
     ActivityName = serializers.CharField(source='activity.ActivityName', read_only=True)
     Description = serializers.CharField(source='activity.AdditionalNote', read_only=True)
@@ -333,7 +333,7 @@ class VerifyActivitySerializer(serializers.ModelSerializer):
         model = TrnActivityTask
         fields = [
             'ActivityId',
-            'CategoryName',
+            'Category',
             'ActivityName',
             'Description',
             'CreatedOn',
@@ -471,6 +471,46 @@ class ActivityDataSerializer(serializers.ModelSerializer):
                 "actionOn": update.ActionOn.strftime("%Y-%m-%d")
             }
             for update in updates
+        ]
+    
+
+class TaskDetailSerializer(serializers.ModelSerializer):
+    taskId = serializers.IntegerField(source='TaskId')
+    taskName = serializers.CharField(source='TaskDescription')
+    status = serializers.CharField(source='status.status_name')
+    assignedOn = serializers.DateTimeField(source='AssignedOn', format="%Y-%m-%d")
+    assignedTo = serializers.CharField(source='assigned_to.user_name')
+    updates = serializers.SerializerMethodField()
+    child_tasks = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TrnActivityTask
+        fields = ['taskId', 'taskName', 'status', 'assignedOn', 'assignedTo', 'updates', 'child_tasks']
+
+    def get_updates(self, obj):
+        updates = TrnTaskUpdate.objects.filter(task_id=obj)
+        return [
+            {
+                "actionStatus": update.action_status.status_name,
+                "remarks": update.Remarks,
+                "actionBy": update.action_by.user_name,
+                "actionOn": update.ActionOn.strftime("%Y-%m-%d")
+            }
+            for update in updates
+        ]
+
+    def get_child_tasks(self, obj):
+        children = TrnActivityTask.objects.filter(reference_task=obj)
+        return [
+            {
+                "taskId": child.TaskId,
+                "taskName": child.TaskDescription,
+                "status": child.status.status_name,
+                "assignedOn": child.AssignedOn.strftime("%Y-%m-%d"),
+                "assignedTo": child.assigned_to.user_name,
+                "updates": self.get_updates(child)
+            }
+            for child in children
         ]
 
 

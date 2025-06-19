@@ -76,6 +76,9 @@ def homepage(request):
                 <li class="list-group-item">
                     <a href="{reverse('activity-detail', kwargs={'activity_id': 43})}">Get ActivityInfo API (Demo test activity)</a>
                 </li>
+                <li class="list-group-item">
+                    <a href="{reverse('task-detail', kwargs={'task_id': 41})}">Get TaskInfo API (Demo test activity)</a>
+                </li>
             </ul>
         </div>
     </body>
@@ -695,6 +698,19 @@ class ActivityDetailView(APIView):
             return Response({"error": "Activity not found"}, status=status.HTTP_404_NOT_FOUND)
 
         serializer = ActivityDataSerializer(activity)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+from .serializers import TaskDetailSerializer
+
+class TaskDetailView(APIView):
+    def get(self, request, task_id):
+        try:
+            task = TrnActivityTask.objects.get(TaskId=task_id)
+        except TrnActivityTask.DoesNotExist:
+            return Response({"error": "Task not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = TaskDetailSerializer(task)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 

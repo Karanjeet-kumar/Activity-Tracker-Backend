@@ -278,6 +278,8 @@ class AssignedTaskSerializer(serializers.ModelSerializer):
     Verifier = serializers.CharField(source='activity.verifier.user_name', read_only=True)
     Status = serializers.CharField(source='status.status_name', read_only=True)
     CreatedBy = serializers.SerializerMethodField()
+    SubTaskCount = serializers.SerializerMethodField()
+    SubTaskStatuses = serializers.SerializerMethodField() 
 
     class Meta:
         model = TrnActivityTask
@@ -291,6 +293,8 @@ class AssignedTaskSerializer(serializers.ModelSerializer):
             'Status',
             'Verifier',
             'CreatedBy',
+            'SubTaskCount',
+            'SubTaskStatuses'
         ]
 
     def get_CreatedBy(self, obj):
@@ -299,6 +303,13 @@ class AssignedTaskSerializer(serializers.ModelSerializer):
         else:
             return obj.activity.created_by.user_name if obj.activity and obj.activity.created_by else None
 
+    def get_SubTaskCount(self, obj):
+        return TrnActivityTask.objects.filter(reference_task=obj).count()
+    
+    
+    def get_SubTaskStatuses(self, obj):
+        sub_tasks = TrnActivityTask.objects.filter(reference_task=obj).select_related('status')
+        return [task.status.status_name for task in sub_tasks if task.status]
 
 
 # Serializer for add trn_task_update  
@@ -482,10 +493,11 @@ class TaskDetailSerializer(serializers.ModelSerializer):
     assignedTo = serializers.CharField(source='assigned_to.user_name')
     updates = serializers.SerializerMethodField()
     child_tasks = serializers.SerializerMethodField()
+    child_task_count = serializers.SerializerMethodField()
 
     class Meta:
         model = TrnActivityTask
-        fields = ['taskId', 'taskName', 'status', 'assignedOn', 'assignedTo', 'updates', 'child_tasks']
+        fields = ['taskId', 'taskName', 'status', 'assignedOn', 'assignedTo', 'updates', 'child_task_count', 'child_tasks']
 
     def get_updates(self, obj):
         updates = TrnTaskUpdate.objects.filter(task_id=obj)
@@ -512,6 +524,9 @@ class TaskDetailSerializer(serializers.ModelSerializer):
             }
             for child in children
         ]
+    
+    def get_child_task_count(self, obj):
+        return TrnActivityTask.objects.filter(reference_task=obj).count()
 
 
 

@@ -47,7 +47,7 @@ def homepage(request):
                     <a href="{reverse('add-trnActivity')}">Add TrnActivity API</a>
                 </li>
                 <li class="list-group-item">
-                    <a href="{reverse('trnActivities-list', kwargs={'admin_id': 43})}">Get TrnActivities API (Admin 45)</a>
+                    <a href="{reverse('trnActivities-list', kwargs={'admin_id': 43})}">Get TrnActivities API (Admin 43)</a>
                 </li>
                 <li class="list-group-item">
                     <a href="{reverse('assignedActivities-list', kwargs={'user_id': 45})}">Get AssignedActivities API (User 45)</a>
@@ -78,6 +78,9 @@ def homepage(request):
                 </li>
                 <li class="list-group-item">
                     <a href="{reverse('task-detail', kwargs={'task_id': 41})}">Get TaskInfo API (Demo test activity)</a>
+                </li>
+                <li class="list-group-item">
+                    <a href="{reverse('activity-dashboard', kwargs={'admin_id': 43})}">Get Activity-StatusCount API (Admin 43)</a>
                 </li>
             </ul>
         </div>
@@ -413,7 +416,7 @@ class TrnActivityListView(APIView):
     def get(self, request, admin_id):
         # Get optional query parameters
         activity_name = request.query_params.get('activity_name', None)
-        status = request.query_params.get('status', '3')
+        status = request.query_params.get('status', '1')
 
         # Base queryset
         activities = TrnActivity.objects.filter(created_by=admin_id)
@@ -757,6 +760,53 @@ class TaskDetailView(APIView):
         serializer = TaskDetailSerializer(task)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
+
+
+
+from rest_framework import status as drf_status
+from django.db.models import Count
+from datetime import date
+
+class ActivityDashboardAPIView(APIView):
+    def get(self, request, admin_id):
+        # ✅ Validate admin user
+        if not MstUser.objects.filter(user_id=admin_id, is_active=True).exists():
+            return Response({"error": "Admin user not found."}, status=drf_status.HTTP_404_NOT_FOUND)
+
+        today = date.today()
+
+        # ✅ Activities created by this admin
+        activities = TrnActivity.objects.filter(created_by_id=admin_id)
+
+        # ✅ Count by status
+        status_counts = activities.values('status__status_name').annotate(
+            count=Count('ActivityId')
+        ).order_by('status__status_name')
+
+        # ✅ Delayed count (status_id 1 or 3 and target date < today)
+        delayed_count = activities.filter(
+            status__status_id__in=[1, 3],
+            TargetDate__lt=today
+        ).count()
+
+        # ✅ OnTrack count (status_id 3 and target date >= today)
+        onTrack_count = activities.filter(
+            status__status_id=3,
+            TargetDate__gte=today
+        ).count()
+
+        # ✅ Format result
+        response_data = {
+            "status_wise_counts": {
+                entry['status__status_name']: entry['count'] for entry in status_counts
+            },
+            "delayed_activity_count": delayed_count,
+            "onTrack_activity_count": onTrack_count
+        }
+
+        return Response(response_data, status=drf_status.HTTP_200_OK)
+
+
 
 
 # Without using serializer-----------------------

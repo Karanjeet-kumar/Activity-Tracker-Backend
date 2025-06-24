@@ -413,7 +413,7 @@ class TrnActivityListView(APIView):
     def get(self, request, admin_id):
         # Get optional query parameters
         activity_name = request.query_params.get('activity_name', None)
-        status = request.query_params.get('status', None)
+        status = request.query_params.get('status', '3')
 
         # Base queryset
         activities = TrnActivity.objects.filter(created_by=admin_id)
@@ -466,7 +466,7 @@ class AssignedActivityListView(APIView):
 
         # Get optional query parameters
         activity_name = request.query_params.get('activity_name', None)
-        status = request.query_params.get('status', None)
+        status = request.query_params.get('status', '1')
 
         if hod_department:
             # User is HOD
@@ -565,14 +565,58 @@ from .serializers import AssignedTaskSerializer
 #         })
 
 
+# class AssignedTaskListView(APIView):
+#     def get(self, request, user_id):
+#         # Get optional query parameters
+#         task_name = request.query_params.get('task_name', None)
+#         status = request.query_params.get('status', '2')
+
+#         # Base queryset
+#         tasks = TrnActivityTask.objects.filter(assigned_to__user_id=user_id)
+
+#         # Apply filters
+#         if task_name:
+#             tasks = tasks.filter(TaskDescription__icontains=task_name)
+
+#         if status:
+#             tasks = tasks.filter(status=status)
+
+#         # Order by created date
+#         tasks = tasks.order_by('-AssignedOn')
+#         serializer = AssignedTaskSerializer(tasks, many=True)
+#         return Response({
+#             "success": "true",
+#             "message": "Tasks fetched successfully.",
+#             "assignedTasks": serializer.data
+#         })
+    
 class AssignedTaskListView(APIView):
     def get(self, request, user_id):
+        try:
+            user = MstUser.objects.get(user_id=user_id)
+        except MstUser.DoesNotExist:
+            return Response({
+                "success": "false",
+                "message": "User not found.",
+                "assignedActivities": []
+            })
+
+        # Check if user is a HOD
+        hod_department = MstDepartment.objects.filter(HOD=user).first()
+
         # Get optional query parameters
         task_name = request.query_params.get('task_name', None)
-        status = request.query_params.get('status', None)
+        status = request.query_params.get('status', '2')
 
-        # Base queryset
-        tasks = TrnActivityTask.objects.filter(assigned_to__user_id=user_id)
+        if hod_department:
+            # User is HOD
+            tasks = TrnActivityTask.objects.filter(
+                activity__department=hod_department,
+                activity__AssignedUserRole__iexact='HOD',
+            )
+        else:
+            # User is Employee
+            tasks = TrnActivityTask.objects.filter(assigned_to__user_id=user_id)      
 
         # Apply filters
         if task_name:

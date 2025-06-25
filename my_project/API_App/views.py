@@ -82,6 +82,9 @@ def homepage(request):
                 <li class="list-group-item">
                     <a href="{reverse('activity-dashboard', kwargs={'admin_id': 43})}">Get Activity-StatusCount API (Admin 43)</a>
                 </li>
+                <li class="list-group-item">
+                    <a href="{reverse('task-dashboard', kwargs={'user_id': 45})}">Get Task-StatusCount API (Admin 45)</a>
+                </li>
             </ul>
         </div>
     </body>
@@ -614,6 +617,7 @@ class AssignedTaskListView(APIView):
         if hod_department:
             # User is HOD
             tasks = TrnActivityTask.objects.filter(
+                IsPrimary=1,
                 activity__department=hod_department,
                 activity__AssignedUserRole__iexact='HOD',
             )
@@ -807,41 +811,51 @@ class ActivityDashboardAPIView(APIView):
         return Response(response_data, status=drf_status.HTTP_200_OK)
 
 
+from django.db.models import Count, Q
 
+class UserDashboardAPIView(APIView):
+    def get(self, request, user_id):
+        try:
+            user = MstUser.objects.get(user_id=user_id)
+        except MstUser.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        today = date.today()
 
-# Without using serializer-----------------------
+        # Check if user is a HOD
+        hod_department = MstDepartment.objects.filter(HOD=user).first()
 
-# from django.utils import timezone
-# from .models import TrnActivity, MstUser
+        if hod_department:
+            tasks = TrnActivityTask.objects.filter(
+                IsPrimary=1,
+                activity__department=hod_department,
+                activity__AssignedUserRole__iexact="HOD",
+            )
+        else:
+            tasks = TrnActivityTask.objects.filter(assigned_to__user_id=user_id)
 
-# class UpdateActivityAcceptanceView(APIView):
-#     def put(self, request, ActivityId):
-#         try:
-#             activity = TrnActivity.objects.get(ActivityId=ActivityId)
-#         except TrnActivity.DoesNotExist:
-#             return Response({"error": "Activity not found."}, status=status.HTTP_404_NOT_FOUND)
+        # Count by status
+        status_counts = (
+            tasks.values("status__status_name")
+            .annotate(count=Count("TaskId"))
+            .order_by("status__status_name")
+        )
 
-#         acceptance = request.data.get("Acceptance")
-#         modified_by_id = request.data.get("modified_by")
+        # ✅ Delayed count (status_id 2, 10 or 3 and target date < today)
+        delayed_count = tasks.filter(
+            status__status_id__in=[2, 10, 3],
+            TargetDate__lt=today
+        ).count()
 
-#         try:
-#             modified_by = MstUser.objects.get(user_id=modified_by_id)
-#         except MstUser.DoesNotExist:
-#             return Response({"error": "Modifier user not found."}, status=status.HTTP_400_BAD_REQUEST)
+        # ✅ Format result
+        response_data = {
+            "status_wise_counts": {
+                entry['status__status_name']: entry['count'] for entry in status_counts
+            },
+            "delayed_task_count": delayed_count,
+        }
 
-#         activity.Acceptance = acceptance
-#         activity.modified_by = modified_by
-#         activity.ModifiedOn = timezone.now()
-#         activity.save()
-
-#         return Response({
-#             "success": True,
-#             "message": "Activity acceptance updated successfully.",
-#             "ActivityId": activity.ActivityId,
-#             "Acceptance": activity.Acceptance,
-#             "ModifiedBy": activity.modified_by.user_name,
-#             "ModifiedOn": activity.ModifiedOn,
-#         }, status=status.HTTP_200_OK)
+        return Response(response_data, status=status.HTTP_200_OK)
 
 
 

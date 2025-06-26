@@ -771,41 +771,55 @@ from rest_framework import status as drf_status
 from django.db.models import Count
 from datetime import date
 
+from datetime import date
+from rest_framework.response import Response
+from rest_framework import status as drf_status
+from rest_framework.views import APIView
+from django.db.models import Count
+
 class ActivityDashboardAPIView(APIView):
     def get(self, request, admin_id):
-        # ✅ Validate admin user
         if not MstUser.objects.filter(user_id=admin_id, is_active=True).exists():
             return Response({"error": "Admin user not found."}, status=drf_status.HTTP_404_NOT_FOUND)
 
         today = date.today()
-
-        # ✅ Activities created by this admin
         activities = TrnActivity.objects.filter(created_by_id=admin_id)
 
-        # ✅ Count by status
+        # Count by status
         status_counts = activities.values('status__status_name').annotate(
             count=Count('ActivityId')
         ).order_by('status__status_name')
 
-        # ✅ Delayed count (status_id 1 or 3 and target date < today)
-        delayed_count = activities.filter(
+        # Delayed activities (status_id 1 or 3 and target date < today)
+        delayed_queryset = activities.filter(
             status__status_id__in=[1, 3],
             TargetDate__lt=today
-        ).count()
+        )
 
-        # ✅ OnTrack count (status_id 3 and target date >= today)
+        delayed_data = []
+        for activity in delayed_queryset:
+            serialized = TrnActivityListSerializer(activity).data
+            # Manually add DelayedDays
+            delayed_days = (today - activity.TargetDate).days if activity.TargetDate else 0
+            serialized['DelayedDays'] = delayed_days
+            delayed_data.append(serialized)
+
+        delayed_count = len(delayed_data)
+
+        # OnTrack count
         onTrack_count = activities.filter(
             status__status_id=3,
             TargetDate__gte=today
         ).count()
 
-        # ✅ Format result
+        # Format result
         response_data = {
             "status_wise_counts": {
                 entry['status__status_name']: entry['count'] for entry in status_counts
             },
             "delayed_activity_count": delayed_count,
-            "onTrack_activity_count": onTrack_count
+            "onTrack_activity_count": onTrack_count,
+            "delayed_activities": delayed_data  
         }
 
         return Response(response_data, status=drf_status.HTTP_200_OK)

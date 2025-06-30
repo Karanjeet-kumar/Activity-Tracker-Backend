@@ -1,7 +1,7 @@
 from rest_framework_simplejwt.views import TokenRefreshView
 from django.urls import path
 from API_App import views
-from .views import ActivityDashboardAPIView, ActivityDetailView, AssignedActivityListView, AssignedTaskListView, LogoutAPIView, TaskDetailView, TrnActivityCloseAPIView, TrnActivityCreateView, TrnActivityListView, TrnActivityTaskCreateView, TrnActivityUpdateCreateView, TrnTaskUpdateCreateView, UpdateActivityAcceptanceView, UserDashboardAPIView, UserListAPIView, VerifierUserListAPIView, VerifyActivityListView
+from .views import ActivityDashboardAPIView, ActivityDetailView, AssignedActivityListView, AssignedTaskListView, DepartmentListAPIView, LogoutAPIView, TaskDetailView, TrnActivityCloseAPIView, TrnActivityCreateView, TrnActivityListView, TrnActivityTaskCreateView, TrnActivityUpdateCreateView, TrnTaskUpdateCreateView, UpdateActivityAcceptanceView, UserDashboardAPIView, UserListAPIView, VerifierUserListAPIView, VerifyActivityListView
 
 urlpatterns = [
     # path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
@@ -12,6 +12,7 @@ urlpatterns = [
     path('companies/', views.companyApi, name='companies'),
     path('get/categories/', views.category_list, name='category-list'),
     path('get/activities/<int:category_id>/', views.activity_list_by_category, name='activity-by-category'),
+    path('get/departments/<int:location_id>/', DepartmentListAPIView.as_view(), name='dept-list'),
     path('get/users/<int:location_id>/', UserListAPIView.as_view(), name='user-list'),
     path('get/verifiers/<int:location_id>/', VerifierUserListAPIView.as_view(), name='verifier-list'),
     path('add/trnActivity/', TrnActivityCreateView.as_view(), name='add-trnActivity'),

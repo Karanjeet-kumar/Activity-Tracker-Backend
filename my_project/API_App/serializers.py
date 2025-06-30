@@ -68,7 +68,7 @@ class MstStatusSerializer(serializers.ModelSerializer):
 class MstDepartmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = MstDepartment
-        fields = '__all__'
+        fields = ['department_id', 'department_name', 'HOD']
         read_only_fields = ('department_id',)
         extra_kwargs = {
             'is_active': {'required': True}
@@ -148,14 +148,42 @@ class LoginUserSerializer(serializers.ModelSerializer):
 
 
 # Serializer for userlist response
+# class UserListSerializer(serializers.ModelSerializer):
+#     department_id = serializers.IntegerField(source='department.department_id', read_only=True)
+#     department_name = serializers.CharField(source='department.department_name', read_only=True)
+#     user_role = serializers.SerializerMethodField()
+
+#     class Meta:
+#         model = MstUser
+#         fields = ['user_id', 'user_name', 'email_id', 'department_id', 'department_name', 'user_role']
+
+#     def get_user_role(self, obj):
+#         # Check if this user is an HOD
+#         is_hod = MstDepartment.objects.filter(HOD=obj).exists()
+#         return "HOD" if is_hod else "EMPLOYEE"
+
+
+from rest_framework import serializers
+from .models import MstUser, MstDepartment  # Adjust if paths differ
+
 class UserListSerializer(serializers.ModelSerializer):
-    department_id = serializers.IntegerField(source='department.department_id', read_only=True)
-    department_name = serializers.CharField(source='department.department_name', read_only=True)
+    departments = serializers.SerializerMethodField()
     user_role = serializers.SerializerMethodField()
 
     class Meta:
         model = MstUser
-        fields = ['user_id', 'user_name', 'email_id', 'department_id', 'department_name', 'user_role']
+        fields = ['user_id', 'user_name', 'email_id', 'departments', 'user_role']
+
+    def get_departments(self, obj):
+        # Find departments where this user is HOD
+        departments = MstDepartment.objects.filter(HOD=obj)
+        return [
+            {
+                "department_id": dept.department_id,
+                "department_name": dept.department_name
+            }
+            for dept in departments
+        ]
 
     def get_user_role(self, obj):
         # Check if this user is an HOD

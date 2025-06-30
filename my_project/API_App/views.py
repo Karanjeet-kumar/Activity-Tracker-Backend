@@ -38,6 +38,9 @@ def homepage(request):
                     <a href="{reverse('activity-by-category', kwargs={'category_id': 2})}">Activity API (Category 2)</a>
                 </li>
                 <li class="list-group-item">
+                    <a href="{reverse('dept-list', kwargs={'location_id': 1})}">Get Departments API (Location 1)</a>
+                </li>
+                <li class="list-group-item">
                     <a href="{reverse('user-list', kwargs={'location_id': 1})}">Get Users API (Location 1)</a>
                 </li>
                 <li class="list-group-item">
@@ -272,6 +275,19 @@ def activity_list_by_category(request, category_id):
     })
 
 
+from .serializers import MstDepartmentSerializer
+
+class DepartmentListAPIView(APIView):
+    def get(self, request, location_id):
+        departments = MstDepartment.objects.filter(location_id=location_id, is_active=True)
+        serializer = MstDepartmentSerializer(departments, many=True)
+        return Response({
+            "success": "true",
+            "message": "Departments fetched successfully.",
+            "departments": serializer.data
+        })
+
+
 from .serializers import UserListSerializer
 from django.db.models import Q
 
@@ -283,7 +299,7 @@ class UserListAPIView(APIView):
 
         hod_user_ids = MstDepartment.objects.filter(
             HOD__isnull=False
-        ).values_list('HOD_id', flat=True).distinct()
+        ).values_list('HOD_id', flat=True)
 
         if user_role == "HOD":
             users = MstUser.objects.filter(
@@ -333,6 +349,82 @@ class UserListAPIView(APIView):
             "message": "Users fetched successfully.",
             "users": serializer.data
         })
+
+# from collections import Counter
+# from rest_framework.response import Response
+# from rest_framework.views import APIView
+# from django.db.models import Q
+
+# class UserListAPIView(APIView):
+#     def get(self, request, location_id):
+#         user_name = request.query_params.get('user_name')
+#         department_name = request.query_params.get('department_name')
+#         user_role = request.query_params.get('user_role', '').upper()
+
+#         # Get all HOD user_ids with duplicates to count appearances
+#         hod_user_ids_all = list(
+#             MstDepartment.objects.filter(HOD__isnull=False)
+#             .values_list('HOD_id', flat=True)
+#         )
+#         print("<QuerySet>", hod_user_ids_all)
+
+#         # Count how many times each HOD appears
+#         hod_user_id_count = Counter(hod_user_ids_all)
+
+#         if user_role == "HOD":
+#             base_users = MstUser.objects.filter(
+#                 is_active=True,
+#                 location_id=location_id,
+#                 user_id__in=hod_user_id_count.keys()
+#             ).exclude(role__role_name__iexact='admin')
+
+#             if department_name:
+#                 base_users = base_users.filter(department__department_name__icontains=department_name)
+
+#             # Duplicate users based on count
+#             users = []
+#             for user in base_users:
+#                 count = hod_user_id_count.get(user.user_id, 1)
+#                 users.extend([user] * count)
+
+#         elif user_role == "EMPLOYEE":
+#             if user_name:
+#                 users = MstUser.objects.filter(
+#                     is_active=True,
+#                     location_id=location_id,
+#                     user_name__icontains=user_name
+#                 ).exclude(
+#                     Q(role__role_name__iexact='admin') | Q(user_id__in=hod_user_ids_all)
+#                 )
+
+#                 if department_name:
+#                     users = users.filter(department__department_name__icontains=department_name)
+
+#             elif department_name:
+#                 users = MstUser.objects.filter(
+#                     is_active=True,
+#                     location_id=location_id,
+#                     department__department_name__icontains=department_name
+#                 ).exclude(
+#                     Q(role__role_name__iexact='admin') | Q(user_id__in=hod_user_ids_all)
+#                 )
+#             else:
+#                 users = MstUser.objects.none()
+
+#         else:
+#             return Response({
+#                 "success": "false",
+#                 "message": "User Role missing",
+#             })
+
+#         serializer = UserListSerializer(users, many=True)
+#         return Response({
+#             "success": "true",
+#             "message": "Users fetched successfully.",
+#             "users": serializer.data
+#         })
+
+
 
 # class UserListAPIView(APIView):
 #     def get(self, request, location_id):
@@ -468,16 +560,16 @@ class AssignedActivityListView(APIView):
             })
 
         # Check if user is a HOD
-        hod_department = MstDepartment.objects.filter(HOD=user).first()
+        hod_departments = MstDepartment.objects.filter(HOD=user)
 
         # Get optional query parameters
         activity_name = request.query_params.get('activity_name', None)
         status = request.query_params.get('status', '1')
 
-        if hod_department:
+        if hod_departments.exists():
             # User is HOD
             activities = TrnActivity.objects.filter(
-                department=hod_department,
+                department__in=hod_departments,
                 AssignedUserRole__iexact='HOD',
                 status_id=1
             ).order_by('-CreatedOn')
@@ -608,17 +700,17 @@ class AssignedTaskListView(APIView):
             })
 
         # Check if user is a HOD
-        hod_department = MstDepartment.objects.filter(HOD=user).first()
+        hod_departments = MstDepartment.objects.filter(HOD=user)
 
         # Get optional query parameters
         task_name = request.query_params.get('task_name', None)
         status = request.query_params.get('status', '2')
 
-        if hod_department:
+        if hod_departments.exists():
             # User is HOD
             tasks = TrnActivityTask.objects.filter(
                 IsPrimary=1,
-                activity__department=hod_department,
+                activity__department__in=hod_departments,
                 activity__AssignedUserRole__iexact='HOD',
             )
         else:

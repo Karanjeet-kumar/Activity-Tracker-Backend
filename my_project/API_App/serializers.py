@@ -167,14 +167,16 @@ from rest_framework import serializers
 from .models import MstUser, MstDepartment  # Adjust if paths differ
 
 class UserListSerializer(serializers.ModelSerializer):
-    departments = serializers.SerializerMethodField()
+    departmentId = serializers.IntegerField(source='department.department_id', read_only=True)
+    departmentName = serializers.CharField(source='department.department_name', read_only=True)
+    hod_departments = serializers.SerializerMethodField()
     user_role = serializers.SerializerMethodField()
 
     class Meta:
         model = MstUser
-        fields = ['user_id', 'user_name', 'email_id', 'departments', 'user_role']
+        fields = ['user_id', 'user_name', 'email_id', 'departmentId', 'departmentName', 'hod_departments', 'user_role']
 
-    def get_departments(self, obj):
+    def get_hod_departments(self, obj):
         # Find departments where this user is HOD
         departments = MstDepartment.objects.filter(HOD=obj)
         return [

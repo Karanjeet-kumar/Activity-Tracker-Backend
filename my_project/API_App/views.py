@@ -291,101 +291,25 @@ class DepartmentListAPIView(APIView):
 from .serializers import UserListSerializer
 from django.db.models import Q
 
-class UserListAPIView(APIView):
-    def get(self, request, location_id):
-        user_name = request.query_params.get('user_name')
-        department_name = request.query_params.get('department_name')
-        user_role = request.query_params.get('user_role', '').upper()
-
-        hod_user_ids = MstDepartment.objects.filter(
-            HOD__isnull=False
-        ).values_list('HOD_id', flat=True)
-
-        if user_role == "HOD":
-            users = MstUser.objects.filter(
-                is_active=True,
-                location_id=location_id,
-                user_id__in=hod_user_ids
-            ).exclude(role__role_name__iexact='admin')
-
-            if department_name:
-                users = users.filter(department__department_name__icontains=department_name)
-
-        elif user_role == "EMPLOYEE":
-            if user_name:
-                users = MstUser.objects.filter(
-                    is_active=True,
-                    location_id=location_id,
-                    user_name__icontains=user_name
-                ).exclude(
-                    Q(role__role_name__iexact='admin') | Q(user_id__in=hod_user_ids)
-                )
-
-                if department_name:
-                    users = users.filter(department__department_name__icontains=department_name)
-
-            elif department_name:
-                # users = users.filter(department__department_name__icontains=department_name)
-                users = MstUser.objects.filter(
-                    is_active=True,
-                    location_id=location_id,
-                    department__department_name__icontains=department_name
-                ).exclude(
-                    Q(role__role_name__iexact='admin') | Q(user_id__in=hod_user_ids)
-                )
-
-            else:
-                users = MstUser.objects.none()  # No user_name → return empty queryset
-
-        else:
-            return Response({
-                "success": "false",
-                "message": "User Role missing",
-            })
-
-        serializer = UserListSerializer(users, many=True)
-        return Response({
-            "success": "true",
-            "message": "Users fetched successfully.",
-            "users": serializer.data
-        })
-
-# from collections import Counter
-# from rest_framework.response import Response
-# from rest_framework.views import APIView
-# from django.db.models import Q
-
 # class UserListAPIView(APIView):
 #     def get(self, request, location_id):
 #         user_name = request.query_params.get('user_name')
 #         department_name = request.query_params.get('department_name')
 #         user_role = request.query_params.get('user_role', '').upper()
 
-#         # Get all HOD user_ids with duplicates to count appearances
-#         hod_user_ids_all = list(
-#             MstDepartment.objects.filter(HOD__isnull=False)
-#             .values_list('HOD_id', flat=True)
-#         )
-#         print("<QuerySet>", hod_user_ids_all)
-
-#         # Count how many times each HOD appears
-#         hod_user_id_count = Counter(hod_user_ids_all)
+#         hod_user_ids = MstDepartment.objects.filter(
+#             HOD__isnull=False
+#         ).values_list('HOD_id', flat=True)
 
 #         if user_role == "HOD":
-#             base_users = MstUser.objects.filter(
+#             users = MstUser.objects.filter(
 #                 is_active=True,
 #                 location_id=location_id,
-#                 user_id__in=hod_user_id_count.keys()
+#                 user_id__in=hod_user_ids
 #             ).exclude(role__role_name__iexact='admin')
 
 #             if department_name:
-#                 base_users = base_users.filter(department__department_name__icontains=department_name)
-
-#             # Duplicate users based on count
-#             users = []
-#             for user in base_users:
-#                 count = hod_user_id_count.get(user.user_id, 1)
-#                 users.extend([user] * count)
+#                 users = users.filter(department__department_name__icontains=department_name)
 
 #         elif user_role == "EMPLOYEE":
 #             if user_name:
@@ -394,22 +318,24 @@ class UserListAPIView(APIView):
 #                     location_id=location_id,
 #                     user_name__icontains=user_name
 #                 ).exclude(
-#                     Q(role__role_name__iexact='admin') | Q(user_id__in=hod_user_ids_all)
+#                     Q(role__role_name__iexact='admin') | Q(user_id__in=hod_user_ids)
 #                 )
 
 #                 if department_name:
 #                     users = users.filter(department__department_name__icontains=department_name)
 
 #             elif department_name:
+#                 # users = users.filter(department__department_name__icontains=department_name)
 #                 users = MstUser.objects.filter(
 #                     is_active=True,
 #                     location_id=location_id,
 #                     department__department_name__icontains=department_name
 #                 ).exclude(
-#                     Q(role__role_name__iexact='admin') | Q(user_id__in=hod_user_ids_all)
+#                     Q(role__role_name__iexact='admin') | Q(user_id__in=hod_user_ids)
 #                 )
+
 #             else:
-#                 users = MstUser.objects.none()
+#                 users = MstUser.objects.none()  # No user_name → return empty queryset
 
 #         else:
 #             return Response({
@@ -424,43 +350,62 @@ class UserListAPIView(APIView):
 #             "users": serializer.data
 #         })
 
+class UserListAPIView(APIView):
+    def get(self, request, location_id):
+        user_name = request.query_params.get('user_name')
+        department_name = request.query_params.get('department_name')
+        user_role = request.query_params.get('user_role', '').upper()
+
+        # Get all HOD user_ids
+        hod_user_ids = MstDepartment.objects.filter(
+            HOD__isnull=False
+        ).values_list('HOD_id', flat=True).distinct()
+
+        if user_role == "HOD":
+            if department_name:
+                # Filter HODs based on matching department names they are HOD of
+                matched_hod_ids = MstDepartment.objects.filter(
+                    HOD__isnull=False,
+                    department_name__icontains=department_name
+                ).values_list('HOD_id', flat=True).distinct()
+
+                users = MstUser.objects.filter(
+                    is_active=True,
+                    location_id=location_id,
+                    user_id__in=matched_hod_ids
+                ).exclude(role__role_name__iexact='admin')
+            else:
+                users = MstUser.objects.filter(
+                    is_active=True,
+                    location_id=location_id,
+                    user_id__in=hod_user_ids
+                ).exclude(role__role_name__iexact='admin')
+
+        elif user_role == "EMPLOYEE":
+            employee_filter = Q(is_active=True, location_id=location_id)
+            if user_name:
+                employee_filter &= Q(user_name__icontains=user_name)
+            if department_name:
+                employee_filter &= Q(department__department_name__icontains=department_name)
+
+            users = MstUser.objects.filter(employee_filter).exclude(
+                Q(role__role_name__iexact='admin') | Q(user_id__in=hod_user_ids)
+            )
+
+        else:
+            return Response({
+                "success": "false",
+                "message": "User Role missing",
+            })
+
+        serializer = UserListSerializer(users, many=True)
+        return Response({
+            "success": "true",
+            "message": "Users fetched successfully.",
+            "users": serializer.data
+        })
 
 
-# class UserListAPIView(APIView):
-#     def get(self, request, location_id):
-#         user_name = request.query_params.get('user_name')
-#         department_name = request.query_params.get('department_name')
-#         user_role = request.query_params.get('user_role')
-
-#         # Base queryset: users by location and not 'admin'
-#         users = MstUser.objects.filter(
-#             is_active=True,
-#             location_id=location_id
-#         ).exclude(role__role_name__iexact='admin')
-
-#         # Apply user_name filter
-#         if user_name:
-#             users = users.filter(user_name__icontains=user_name)
-
-#         # Apply department_name filter
-#         if department_name:
-#             users = users.filter(department__department_name__icontains=department_name)
-
-#         # Apply user_role filter: check if user is HOD of any department
-#         if user_role:
-#             user_ids_who_are_hods = MstDepartment.objects.filter(HOD__isnull=False).values_list('HOD_id', flat=True)
-#             if user_role.upper() == "HOD":
-#                 users = users.filter(user_id__in=user_ids_who_are_hods)
-#             elif user_role.upper() == "EMPLOYEE":
-#                 users = users.exclude(user_id__in=user_ids_who_are_hods)
-
-#         serializer = UserListSerializer(users, many=True)
-#         return Response({
-#             "success": "true",
-#             "message": "Users fetched successfully.",
-#             "users": serializer.data
-#         })
-    
 
 
 from .serializers import VerifierListSerializer

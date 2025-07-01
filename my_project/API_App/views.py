@@ -423,6 +423,34 @@ class VerifierUserListAPIView(APIView):
         })
 
 
+class VerifierUserListAPIView(APIView):
+    def get(self, request, location_id):
+        # Get optional query parameter for search
+        user_name = request.query_params.get('user_name', None)
+
+        # Get verifier user IDs from MstVerifier
+        verifier_user_ids = MstVerifier.objects.values_list('verifier_id', flat=True)
+
+        # Base queryset for users who are active and match the location
+        users = MstUser.objects.filter(
+            is_active=True,
+            location_id=location_id,
+            user_id__in=verifier_user_ids
+        )
+
+        # Apply name search filter if provided
+        if user_name:
+            users = users.filter(user_name__icontains=user_name)
+
+        # Serialize and return response
+        serializer = VerifierListSerializer(users, many=True)
+        return Response({
+            "success": "true",
+            "message": "Verifiers fetched successfully.",
+            "verifiers": serializer.data
+        })
+
+
 
 from rest_framework import status
 from .serializers import TrnActivitySerializer
@@ -720,35 +748,52 @@ class TrnTaskUpdateCreateView(APIView):
 
 
 
-from django.db.models import OuterRef, Subquery, DateTimeField
-from .models import TrnTaskUpdate
+from django.db.models import OuterRef, Subquery, DateTimeField, Q
+from .models import TrnActivityTask, TrnTaskUpdate
 
 class VerifyActivityListView(APIView):
     def get(self, request, user_id):
+        # Get optional search/filter query parameters
+        activity_name = request.query_params.get('activity_name', None)
+        activity_status = request.query_params.get('status', '5')
+
         # Subquery to get latest ActionOn per task
         latest_actionon_subquery = TrnTaskUpdate.objects.filter(
             task_id=OuterRef('pk')
         ).order_by('-ActionOn').values('ActionOn')[:1]
 
-        # Annotate each task with latest ActionOn and order by it
+        # Base queryset
         activities = TrnActivityTask.objects.select_related('activity').annotate(
             last_actionon=Subquery(latest_actionon_subquery, output_field=DateTimeField())
         ).filter(
             IsPrimary=True,
             activity__status__in=[3, 5],
             activity__verifier__user_id=user_id,
-            status__in=[5, 8]
-        ).order_by('-last_actionon')  # ⬅️ Order by latest action
+            status__in=[5, 8, 10]
+        )
 
+        # Apply search filter on activity name
+        if activity_name:
+            activities = activities.filter(activity__ActivityName__icontains=activity_name)
+
+        # Apply filter on task status
+        if activity_status:
+            activities = activities.filter(status=activity_status)
+
+        # Order by latest ActionOn
+        activities = activities.order_by('-last_actionon')
+
+        # Serialize and return
         serializer = VerifyActivitySerializer(activities, many=True)
         return Response(
             {
                 "success": True,
-                "message": "Verifier Activities Fetched successfully.",
+                "message": "Verifier Activities fetched successfully.",
                 "activities": serializer.data
             },
             status=status.HTTP_200_OK
         )
+
     
 
 from .serializers import TrnActivityUpdateCreateSerializer

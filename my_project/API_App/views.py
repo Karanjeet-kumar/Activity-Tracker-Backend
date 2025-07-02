@@ -767,9 +767,9 @@ class VerifyActivityListView(APIView):
             last_actionon=Subquery(latest_actionon_subquery, output_field=DateTimeField())
         ).filter(
             IsPrimary=True,
-            activity__status__in=[3, 5],
+            activity__status__in=[3, 5, 6],
             activity__verifier__user_id=user_id,
-            status__in=[5, 8, 10]
+            status__in=[5, 6, 8, 10]
         )
 
         # Apply search filter on activity name
@@ -809,14 +809,41 @@ class TrnActivityUpdateCreateView(APIView):
 
 from .serializers import TrnActivityCloseSerializer
 
+# class TrnActivityCloseAPIView(APIView):
+#     def put(self, request, activity_id):
+#         activity = TrnActivity.objects.get(ActivityId=activity_id)
+#         serializer = TrnActivityCloseSerializer(activity, data=request.data, partial=True)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response({"success": True, "message": "Activity Close Updated", "data": serializer.data}, status=status.HTTP_200_OK)
+#         return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
 class TrnActivityCloseAPIView(APIView):
     def put(self, request, activity_id):
-        activity = TrnActivity.objects.get(ActivityId=activity_id)
+        try:
+            activity = TrnActivity.objects.get(ActivityId=activity_id)
+        except TrnActivity.DoesNotExist:
+            return Response({"success": False, "message": "Activity not found."}, status=status.HTTP_404_NOT_FOUND)
+
         serializer = TrnActivityCloseSerializer(activity, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response({"success": True, "message": "Activity Close Updated", "data": serializer.data}, status=status.HTTP_200_OK)
-        return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+            # ✅ Update all related TrnActivityTask statuses to 6
+            TrnActivityTask.objects.filter(activity=activity, IsPrimary=True).update(status_id=6)
+
+            return Response({
+                "success": True,
+                "message": "Activity closed and all related tasks updated to status 6.",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+
+        return Response({
+            "success": False,
+            "errors": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 
 

@@ -757,12 +757,14 @@ class TrnTaskUpdateCreateView(APIView):
             task.status = task_update.action_status
             task.save()
 
-            # Assuming status_id == 5 represents "Completed"
-            if task_update.action_status.status_id == 5:
+            # Only update activity if this task is marked as primary
+            if task.IsPrimary and task_update.action_status.status_id == 5:
                 activity = task.activity
                 if activity.verifier is None:
-                    activity.status_id = 5
-                    activity.save()
+                    activity.status_id = 5  # e.g., "Completed"
+                else:
+                    activity.status_id = 4  # e.g., "Pending Verification"
+                activity.save()
 
             return Response(
                 {
@@ -795,7 +797,7 @@ class VerifyActivityListView(APIView):
             last_actionon=Subquery(latest_actionon_subquery, output_field=DateTimeField())
         ).filter(
             IsPrimary=True,
-            activity__status__in=[3, 5, 6],
+            activity__status__in=[3, 4, 5, 6],
             activity__verifier__user_id=user_id,
             status__in=[5, 6, 8, 10]
         )

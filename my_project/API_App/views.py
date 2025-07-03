@@ -725,21 +725,49 @@ from .serializers import TrnTaskUpdateSerializer
 #             "errors": serializer.errors
 #         }, status=status.HTTP_400_BAD_REQUEST)
 
+# class TrnTaskUpdateCreateView(APIView):
+#     def post(self, request):
+#         serializer = TrnTaskUpdateSerializer(data=request.data)
+#         if serializer.is_valid():
+#             task_update = serializer.save()
+
+#             # Update the corresponding TrnActivityTask action_status
+#             task = task_update.task_id  # FK instance
+#             task.status = task_update.action_status
+#             task.save()
+
+
+#             return Response(
+#                 {   
+#                     "success": True,
+#                     "message": "Task Updated successfully.",
+#                     "data": serializer.data
+#                 },
+#                 status=status.HTTP_201_CREATED
+#             )
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 class TrnTaskUpdateCreateView(APIView):
     def post(self, request):
         serializer = TrnTaskUpdateSerializer(data=request.data)
         if serializer.is_valid():
             task_update = serializer.save()
 
-            # Update the corresponding TrnActivityTask action_status
-            task = task_update.task_id  # FK instance
+            task = task_update.task_id
             task.status = task_update.action_status
             task.save()
 
+            # Assuming status_id == 5 represents "Completed"
+            if task_update.action_status.status_id == 5:
+                activity = task.activity
+                if activity.verifier is None:
+                    activity.status_id = 5
+                    activity.save()
+
             return Response(
-                {   
+                {
                     "success": True,
-                    "message": "Task Updated successfully.",
+                    "message": "Task updated successfully.",
                     "data": serializer.data
                 },
                 status=status.HTTP_201_CREATED

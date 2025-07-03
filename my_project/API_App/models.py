@@ -165,7 +165,7 @@ class TrnActivity(models.Model):
     
     verifier = models.ForeignKey(
         MstUser, 
-        on_delete=models.CASCADE, 
+        on_delete=models.SET_NULL, null=True,
         db_column='VerifierId', 
         related_name='activities_verified'
     )
@@ -175,6 +175,7 @@ class TrnActivity(models.Model):
         db_column='AssignedUserId', 
         related_name='activities_assigned'
     )
+    
     status = models.ForeignKey(MstStatus, on_delete=models.CASCADE, db_column='StatusId')
     AssignedUserRole =  models.CharField(max_length=100)
     TargetDate = models.DateField()

@@ -241,13 +241,17 @@ class TrnActivityListSerializer(serializers.ModelSerializer):
         fields = [
             'ActivityId',
             'ActivityName',
+            'category',
             'Category',
+            'assign_to',
             'AssignedUser',
             'AssignedUserRole',
+            'verifier',
             'Verifier',
             'CreatedBy',
             'TargetDate',
             'CreatedOn',
+            'department',
             'Department',
             'Status',
             'Acceptance',
@@ -433,7 +437,7 @@ class TrnActivityUpdateCreateSerializer(serializers.ModelSerializer):
         elif action_status.status_name.lower() == 'returned':
             # Set primary task status to status_id 10 (rejected)
             TrnActivityTask.objects.filter(activity=activity, IsPrimary=True).update(status_id=10)
-            
+
             # Also update activity status to ID 3 (InProgress)
             activity.status_id = 3
             activity.save(update_fields=['status_id'])

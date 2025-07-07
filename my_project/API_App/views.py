@@ -455,13 +455,30 @@ class VerifierUserListAPIView(APIView):
 from rest_framework import status
 from .serializers import TrnActivitySerializer
 
+# class TrnActivityCreateView(APIView):
+#     def post(self, request):
+#         serializer = TrnActivitySerializer(data=request.data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response({"success": "true", 'message': 'Activity Assigned Successfully.', 'data': serializer.data})
+#         return Response({"success": "false"} ,serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 class TrnActivityCreateView(APIView):
     def post(self, request):
         serializer = TrnActivitySerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response({"success": "true", 'message': 'Activity Assigned Successfully.', 'data': serializer.data})
-        return Response({"success": "false"} ,serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                "success": "true",
+                "message": "Activity Assigned Successfully.",
+                "data": serializer.data
+            }, status=status.HTTP_201_CREATED)
+
+        return Response({
+            "success": "false",
+            "message": "Validation Failed",
+            "errors": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 
 

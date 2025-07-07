@@ -88,6 +88,9 @@ def homepage(request):
                 <li class="list-group-item">
                     <a href="{reverse('task-dashboard', kwargs={'user_id': 45})}">Get Task-StatusCount API (Admin 45)</a>
                 </li>
+                <li class="list-group-item">
+                    <a href="{reverse('update-activity', kwargs={'activity_id': 1})}">Edit TrnActivity API (ActivityId 1)</a>
+                </li>
             </ul>
         </div>
     </body>
@@ -1029,6 +1032,32 @@ class UserDashboardAPIView(APIView):
         }
 
         return Response(response_data, status=status.HTTP_200_OK)
+
+
+from .serializers import TrnActivityUpdateSerializer
+
+class UpdateActivityView(APIView):
+    def put(self, request, activity_id):
+        try:
+            activity = TrnActivity.objects.get(ActivityId=activity_id)
+        except TrnActivity.DoesNotExist:
+            return Response({"error": "Activity not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        data = {
+            key: value for key, value in {
+                "assign_to": request.data.get("AssignedUserId"),
+                "verifier": request.data.get("Verifier_Id"),
+                "TargetDate": request.data.get("TargetDate"),
+            }.items() if value is not None
+        }
+
+        serializer = TrnActivityUpdateSerializer(activity, data=data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"success": True, "message": "Activity updated successfully."}, status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 

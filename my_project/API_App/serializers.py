@@ -564,6 +564,21 @@ class TaskDetailSerializer(serializers.ModelSerializer):
     
     def get_child_task_count(self, obj):
         return TrnActivityTask.objects.filter(reference_task=obj).count()
+    
+
+    # Serializer for EDIT trn_activity  
+class TrnActivityUpdateSerializer(serializers.ModelSerializer):
+    assign_to = serializers.PrimaryKeyRelatedField(
+        queryset=MstUser.objects.all(), required=False, allow_null=True
+    )
+    verifier = serializers.PrimaryKeyRelatedField(
+        queryset=MstUser.objects.all(), required=False, allow_null=True
+    )
+    TargetDate = serializers.DateField(required=False, allow_null=True)
+
+    class Meta:
+        model = TrnActivity
+        fields = ['assign_to', 'verifier', 'TargetDate']
 
 
 

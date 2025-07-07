@@ -1,7 +1,7 @@
 from rest_framework_simplejwt.views import TokenRefreshView
 from django.urls import path
 from API_App import views
-from .views import ActivityDashboardAPIView, ActivityDetailView, AssignedActivityListView, AssignedTaskListView, DepartmentListAPIView, LogoutAPIView, TaskDetailView, TrnActivityCloseAPIView, TrnActivityCreateView, TrnActivityListView, TrnActivityTaskCreateView, TrnActivityUpdateCreateView, TrnTaskUpdateCreateView, UpdateActivityAcceptanceView, UserDashboardAPIView, UserListAPIView, VerifierUserListAPIView, VerifyActivityListView
+from .views import ActivityDashboardAPIView, ActivityDetailView, AssignedActivityListView, AssignedTaskListView, DepartmentListAPIView, LogoutAPIView, TaskDetailView, TrnActivityCloseAPIView, TrnActivityCreateView, TrnActivityListView, TrnActivityTaskCreateView, TrnActivityUpdateCreateView, TrnTaskUpdateCreateView, UpdateActivityAcceptanceView, UpdateActivityView, UserDashboardAPIView, UserListAPIView, VerifierUserListAPIView, VerifyActivityListView
 
 urlpatterns = [
     # path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
@@ -29,5 +29,6 @@ urlpatterns = [
     path('taskInfo/<int:task_id>/', TaskDetailView.as_view(), name='task-detail'),
     path('dashboard-activity-status/<int:admin_id>/', ActivityDashboardAPIView.as_view(), name='activity-dashboard'),
     path('dashboard-task-status/<int:user_id>/', UserDashboardAPIView.as_view(), name='task-dashboard'),
+    path('trnActivities/edit/<int:activity_id>/', UpdateActivityView.as_view(), name='update-activity'),
 ]
 
